@@ -85,6 +85,11 @@ assert.match(contactPage, /name="website" tabIndex=\{-1\} autoComplete="off"/, "
 assert.match(joinPage, /name="website" tabIndex=\{-1\} autoComplete="off"/, "Recruitment form must include a non-visible honeypot field");
 assert.match(publicSubmissions, /!isSafeHttpsUrl\(githubOrPortfolio\)/, "Recruitment portfolio URLs must require HTTPS");
 assert.match(publicSubmissions, /url\.protocol === "https:" && Boolean\(url\.hostname\) && !url\.username && !url\.password/, "Recruitment portfolio URLs must reject missing hosts and embedded credentials");
+
+const adminContentForDates = await read("app/actions/admin-content.ts");
+assert.match(adminContentForDates, /function validOptionalDate\(value: string\)[\s\S]*?parsed\.toISOString\(\)\.slice\(0, 10\) === value/, "Competition dates must reject impossible calendar dates");
+assert.equal((adminContentForDates.match(/if \(!validOptionalDate\(eventDate\)\)/g) || []).length, 2, "Both competition creation and update must validate event dates");
+assert.match(adminContentForDates, /event_date: eventDate \|\| null/, "Validated competition dates must be the values persisted");
 assert.match(publicSubmissions, /!\/\^\[\^\\s@\].*\.test\(email\)/, "Contact email must be validated server-side");
 
 assert.match(schema, /create table public\.public_submission_rate_limits[\s\S]*?enable row level security/, "Rate-limit state must have RLS enabled");
