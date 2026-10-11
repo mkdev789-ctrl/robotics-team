@@ -96,6 +96,7 @@ assert.match(competitionAdminPage, /name="event_date" type="date" defaultValue=\
 assert.match(publicSubmissions, /!\/\^\[\^\\s@\].*\.test\(email\)/, "Contact email must be validated server-side");
 
 assert.match(schema, /create table public\.public_submission_rate_limits[\s\S]*?enable row level security/, "Rate-limit state must have RLS enabled");
+assert.match(schema, /grant select on public\.profiles to authenticated/i, "Authenticated sessions must have table-level permission to perform RLS-scoped profile lookups");
 assert.match(schema, /revoke all on table public\.public_submission_rate_limits from public, anon, authenticated/, "Rate-limit state must not be directly accessible to client roles");
 assert.match(schema, /create or replace function public\.check_public_submission_rate_limit\([\s\S]*?security definer\s+set search_path = ''/, "Rate-limit RPC must use a hardened security-definer context");
 assert.match(schema, /revoke all on function public\.check_public_submission_rate_limit\(text, integer, integer\) from public, anon, authenticated/, "Rate-limit RPC must be revoked from public client roles");
