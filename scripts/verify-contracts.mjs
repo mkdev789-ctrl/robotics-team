@@ -90,6 +90,9 @@ const adminContentForDates = await read("app/actions/admin-content.ts");
 assert.match(adminContentForDates, /function validOptionalDate\(value: string\)[\s\S]*?parsed\.toISOString\(\)\.slice\(0, 10\) === value/, "Competition dates must reject impossible calendar dates");
 assert.equal((adminContentForDates.match(/if \(!validOptionalDate\(eventDate\)\)/g) || []).length, 2, "Both competition creation and update must validate event dates");
 assert.match(adminContentForDates, /event_date: eventDate \|\| null/, "Validated competition dates must be the values persisted");
+const competitionAdminPage = await read("app/admin/competitions/page.tsx");
+assert.match(competitionAdminPage, /params\\.error === "invalid-date"[\\s\\S]*?real calendar date/, "Competition admin must explain invalid event dates");
+assert.match(competitionAdminPage, /name="event_date" type="date" defaultValue=\\{String\\(item\\.event_date \\?\\? ""\\)\\}/, "Competition edit form must use a date input");
 assert.match(publicSubmissions, /!\/\^\[\^\\s@\].*\.test\(email\)/, "Contact email must be validated server-side");
 
 assert.match(schema, /create table public\.public_submission_rate_limits[\s\S]*?enable row level security/, "Rate-limit state must have RLS enabled");
