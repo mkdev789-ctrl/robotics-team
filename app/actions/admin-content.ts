@@ -12,6 +12,13 @@ function validSlug(slug: string) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
 }
 
+function validOptionalDate(value: string) {
+  if (!value) return true;
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
 function validHttpsUrl(raw: string) {
   try {
     const url = new URL(raw);
@@ -163,11 +170,13 @@ export async function createCompetition(formData: FormData) {
   const organizer = value(formData, "organizer", 180), year = Number(value(formData, "year", 10));
   const segment = value(formData, "segment", 120), robotName = value(formData, "robot_name", 160);
   const level = value(formData, "level", 30), result = value(formData, "result", 40);
+  const eventDate = value(formData, "event_date", 20);
   if (!officialName || !slug || !validSlug(slug) || !organizer || !Number.isInteger(year) || year < 1900 || year > 2100 || !segment || !robotName || !competitionLevels.includes(level as (typeof competitionLevels)[number]) || !competitionResults.includes(result as (typeof competitionResults)[number])) redirect("/admin/competitions?error=missing");
+  if (!validOptionalDate(eventDate)) redirect("/admin/competitions?error=invalid-date");
   const { data: created, error } = await supabase.from("competitions").insert({
     official_name: officialName, slug, organizer, year, segment, robot_name: robotName, level, result,
     city: value(formData, "city", 100) || null, country: value(formData, "country", 100) || null,
-    event_date: value(formData, "event_date", 20) || null, report: value(formData, "report", 4000) || null,
+    event_date: eventDate || null, report: value(formData, "report", 4000) || null,
     publish_status: "draft", visibility: "public", created_by: profile.id, updated_by: profile.id,
   }).select("id").single();
   if (error || !created) { console.error("Competition insert failed:", error); redirect("/admin/competitions?error=save"); }
@@ -233,12 +242,14 @@ export async function updateCompetition(formData: FormData) {
   const id = entityId(formData), officialName = value(formData, "official_name", 200), slug = value(formData, "slug", 120).toLowerCase();
   const organizer = value(formData, "organizer", 180), year = Number(value(formData, "year", 10)), segment = value(formData, "segment", 120);
   const robotName = value(formData, "robot_name", 160), level = value(formData, "level", 30), result = value(formData, "result", 40);
+  const eventDate = value(formData, "event_date", 20);
   if (!id || !officialName || !slug || !validSlug(slug) || !organizer || !Number.isInteger(year) || year < 1900 || year > 2100 || !segment || !robotName || !competitionLevels.includes(level as (typeof competitionLevels)[number]) || !competitionResults.includes(result as (typeof competitionResults)[number])) redirect("/admin/competitions?error=missing");
+  if (!validOptionalDate(eventDate)) redirect("/admin/competitions?error=invalid-date");
   const { data: current, error: readError } = await supabase.from("competitions").select("publish_status").eq("id", id).maybeSingle();
   if (readError || !current) redirect("/admin/competitions?error=not-found");
   if (current.publish_status === "archived") redirect("/admin/competitions?error=archived");
   if (current.publish_status === "published" && !["team_lead", "super_admin"].includes(profile.role)) redirect("/admin/competitions?error=review-required");
-  const { error } = await supabase.from("competitions").update({ official_name: officialName, slug, organizer, year, segment, robot_name: robotName, level, result, city: value(formData, "city", 100) || null, country: value(formData, "country", 100) || null, event_date: value(formData, "event_date", 20) || null, report: value(formData, "report", 4000) || null, publish_status: "draft", updated_by: profile.id, updated_at: new Date().toISOString() }).eq("id", id);
+  const { error } = await supabase.from("competitions").update({ official_name: officialName, slug, organizer, year, segment, robot_name: robotName, level, result, city: value(formData, "city", 100) || null, country: value(formData, "country", 100) || null, event_date: eventDate || null, report: value(formData, "report", 4000) || null, publish_status: "draft", updated_by: profile.id, updated_at: new Date().toISOString() }).eq("id", id);
   if (error) { console.error("Competition update failed:", error); redirect("/admin/competitions?error=save"); }
   const { error: auditError } = await supabase.from("audit_logs").insert({ actor_id: profile.id, action: "update_competition", entity_type: "competition", entity_id: id, metadata: { from: current.publish_status, to: "draft" } });
   if (auditError) console.error("Competition audit write failed:", auditError);
