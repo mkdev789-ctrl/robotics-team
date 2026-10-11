@@ -115,6 +115,9 @@ grant usage on schema private to authenticated;
 grant execute on function private.has_any_role(public.user_role[]) to authenticated;
 
 alter table public.profiles enable row level security;
+
+-- Allow authenticated users to query their own profile; row access remains restricted by RLS.
+grant select on public.profiles to authenticated;
 alter table public.robots enable row level security;
 alter table public.robot_media enable row level security;
 alter table public.competitions enable row level security;
